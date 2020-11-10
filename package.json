@@ -1,5 +1,5 @@
 {
-  "name": "b7-quill",
+  "name": "@chronos/b7-quill",
   "version": "0.0.1",
   "description": "WebComponents wrapper for quill",
   "main": "b7-quill.js",
@@ -19,5 +19,6 @@
   "dependencies": {
     "lit-element": "^2.4.0",
     "quill": "^1.3.7"
-  }
+  },
+  "devDependencies": {}
 }
