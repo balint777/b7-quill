@@ -1,31 +1,12 @@
 import { LitElement, html, css } from 'lit-element';
 import Quill from 'quill/quill';
 
-import Toolbar from 'quill/modules/toolbar';
-import Bubble from 'quill/themes/bubble';
-import Snow from 'quill/themes/snow';
-
-import Bold from 'quill/formats/bold';
-import Italic from 'quill/formats/italic';
-import Header from 'quill/formats/header';
-import Blockquote from 'quill/formats/blockquote';
-import Image from 'quill/formats/image';
-
-
 import quillStyles from 'quill/assets/core.styl';
 import quillSnow from 'quill/assets/snow.styl';
 
 import B7Blockquote from './b7-blockquote';
 
 Quill.register({
-	'modules/toolbar': Toolbar,
-	'themes/bubble': Bubble,
-	'themes/snow': Snow,
-	'formats/bold': Bold,
-	'formats/italic': Italic,
-	'formats/header': Header,
-	'formats/blockquote': Blockquote,
-	'formats/image': Image,
 	'formats/b7-blockquote': B7Blockquote,
 });
 
@@ -42,20 +23,20 @@ class B7Quill extends LitElement
 		};
 	}
 
-	static get styles()
+	static get externalStyles()
 	{
-		return [css`
-			:host {
-				display: block;
-			}
+		return {
+			quill: quillStyles,
+			quillSnow: quillSnow,
+			bLineQuill: css`
 
-			#article {
+			article[slot=quill] {
 				border: none;
 				font-family: Georgia, serif;
 				font-size: 1.2rem;
 			}
 
-			#article p {
+			article[slot=quill] p {
 				line-height: 1.8;
 				text-indent: 1.8em;
 				/* text-align: justify; */
@@ -64,20 +45,20 @@ class B7Quill extends LitElement
 				color: hsla(0, 0%, 22%, 0.8);
 			}
 
-			#article p:first-child {
+			article[slot=quill] p:first-child {
 				text-indent: unset;
 			}
 
-			#article img {
+			article[slot=quill] img {
 				width: 100%;
 				display: block;
 			}
 
-			#article p:first-child > img:first-child {
+			article[slot=quill] p:first-child > img:first-child {
 				margin-left: unset;
 			}
 
-			#article p:first-child:first-letter {
+			article[slot=quill] p:first-child:first-letter {
 				float: left;
 				font-size: 3.2em;
 				line-height: 1em;
@@ -86,7 +67,7 @@ class B7Quill extends LitElement
 				padding-left: .1em;
 			}
 
-			#article blockquote {
+			article[slot=quill] blockquote {
 				font-family: Georgia, serif;
 				font-weight: light;
 				font-size: 18px;
@@ -102,26 +83,48 @@ class B7Quill extends LitElement
 				top: 0;
 				z-index: 2;
 				background: white;
-			}
-		`];
+			}`
+		};
+	}
+
+	static get styles()
+	{
+		return [
+			css`
+			:host {
+				display: block;
+			}`
+		];
 	}
 
 	render()
 	{
 		return html`
-			<style>
-				${quillStyles}
-				${quillSnow}
-			</style>
-			<article id="article"></article>
+			<slot></slot>
+			<slot name="quill" slot="quill"></slot>
 		`;
 	}
 
 	firstUpdated()
 	{
-		this._editor_container = this.hasAttribute('read-only') ? document.createElement('template') : this.shadowRoot;
-		this._editor_node = this.hasAttribute('read-only') ? document.createElement('article') : this.shadowRoot.querySelector('#article');
-		this._editor_container.appendChild(this._editor_node);
+		const readOnly = this.hasAttribute('read-only');
+		let est = B7Quill.externalStyles;
+		for(let key in est) {
+			if (!document.getElementById(key)) {
+				let styleNode = document.createElement('style');
+				styleNode.id = key;
+				styleNode.innerText = est[key].toString();
+				document.head.appendChild(styleNode);
+			}
+
+		}
+		if (readOnly) {
+			this._editor_container = document.createElement('template');
+			this._editor_node = document.createElement('article');
+			this._editor_container.appendChild(this._editor_node);
+		} else {
+			this._editor_node = this.shadowRoot.querySelector('slot[name=quill]').assignedElements({ flatten: true })[0];
+		}
 
 		this._editor = new Quill(
 			this._editor_node,
@@ -130,7 +133,7 @@ class B7Quill extends LitElement
 					toolbar: [
 						[{ 'header': [1, 2, 3, false] }, { 'font': ['sans'] }],
 
-						['blockquote', 'link', 'image', 'b-line-blockquote'],
+						['blockquote', 'link', 'image', 'b7-blockquote'],
 
 						['bold', 'italic'], // toggled buttons
 
@@ -140,7 +143,7 @@ class B7Quill extends LitElement
 					]
 				},
 				placeholder: 'Compose an epic...',
-				readOnly: this.hasAttribute('read-only'),
+				readOnly: readOnly,
 				theme: 'snow'
 			}
 		);
@@ -148,7 +151,7 @@ class B7Quill extends LitElement
 
 	updated(changedProperties)
 	{
-		let article_node = this.shadowRoot.getElementById('article');
+		let article_node = document.querySelector('article[slot=quill]');
 
 		if (changedProperties.has('content')) {
 			this._editor.setContents(this.content);
